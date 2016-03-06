@@ -1,0 +1,14 @@
+{
+  "name": "language-pfunk",
+  "version": "0.2.0",
+  "description": "WIP language package for Pfunk",
+  "keywords": [
+    "language",
+    "grammar"
+  ],
+  "repository": "https://github.com/Chronoes/language-pfunk",
+  "license": "MIT",
+  "engines": {
+    "atom": ">=1.0.0 <2.0.0"
+  }
+}

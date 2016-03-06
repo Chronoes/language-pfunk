@@ -1,0 +1,1202 @@
+name: "Pfunk"
+scopeName: "source.pf"
+foldingStartMarker: "(/\\*|\\{|\\()"
+foldingEndMarker: "(\\*/|\\}|\\))"
+firstLineMatch: "^#!\\s*/.*\\b(node|js)$\\n?"
+fileTypes: [
+  "pf"
+]
+patterns: [
+  { include: "#core" }
+]
+repository:
+  core:
+    patterns: [
+      { include: "#ignore-long-lines" }
+      { include: "#literal-labels" }
+      { include: "#literal-keywords" }
+      { include: "#literal-for" }
+      { include: "#literal-switch" }
+      { include: "#expression" }
+      { include: "#literal-punctuation" }
+    ]
+  expression:
+    patterns: [
+      { include: "#ignore-long-lines" }
+      { include: "#jsx" }
+      { include: "#support" }
+      { include: "#literal-function" }
+      { include: "#literal-arrow-function" }
+      {
+        include: "#literal-regexp"
+        comment: "before operators to avoid abiguities"
+      }
+      { include: "#literal-number" }
+      { include: "#literal-quasi" }
+      { include: "#literal-string" }
+      { include: "#literal-language-constant" }
+      { include: "#literal-language-variable" }
+      { include: "#literal-module" }
+      { include: "#literal-class" }
+      { include: "#literal-constructor" }
+      { include: "#literal-method-call" }
+      { include: "#literal-function-call" }
+      { include: "#comments" }
+      { include: "#brackets" }
+      { include: "#literal-operators" }
+      { include: "#literal-variable" }
+      { include: "#literal-comma" }
+    ]
+  "ignore-long-lines":
+    comment: "so set at arbitary 1000 chars to avoid parsing minified files"
+    patterns: [
+      match: "^(?:).{1000,}"
+    ]
+  "literal-function-labels":
+    patterns: [
+      {
+        comment: "e.g. play: fn(arg1, arg2) { }"
+        name: "meta.function.json.pf"
+        begin: "\\s*([_a-zA-Z][\\w]*)\\s*(:)\\s*(\\bfn\\b)\\s*\\s*(?=\\()"
+        end: "(?=\\{)"
+        applyEndPatternLast: 1
+        beginCaptures:
+          "1":
+            name: "entity.name.function.pf"
+          "2":
+            name: "punctuation.separator.key-value.pf"
+          "3":
+            name: "storage.type.function.pf"
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+      {
+        comment: "e.g. 'play': fn(arg1, arg2) { }"
+        name: "meta.function.json.pf"
+        begin: "\\s*((')(\\b[_a-zA-Z][\\w]*)(\\g2))\\s*(:)\\s*(\\bfn\\b)\\s*(?=\\()"
+        end: "(?=\\{)"
+        applyEndPatternLast: 1
+        beginCaptures:
+          "1":
+            name: "string.quoted.single.pf"
+          "2":
+            name: "punctuation.definition.string.begin.pf"
+          "3":
+            name: "entity.name.function.pf"
+          "4":
+            name: "punctuation.definition.string.end.pf"
+          "5":
+            name: "punctuation.separator.key-value.pf"
+          "6":
+            name: "storage.type.function.pf"
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+    ]
+  "literal-keywords":
+    patterns: [
+      {
+        name: "keyword.control.conditional.pf"
+        match: "\\s*(?<!\\.)\\b(if|else)\\b"
+      }
+      {
+        name: "keyword.control.loop.pf"
+        match: "\\s*(?<!\\.)\\b(break|continue|do|while)\\b"
+      }
+    ]
+  "literal-for":
+    patterns: [
+      {
+        name: "meta.for.pf"
+        match: "\\s*(?<!\\.)\\b(for)\\b"
+        captures:
+          "1":
+            name: "keyword.control.loop.pf"
+        patterns: [
+          {
+            begin: "\\s*\\("
+            end: "\\s*(?=\\))"
+            beginCaptures:
+              "0":
+                name: "meta.brace.round.pf"
+            patterns: [
+              { include: "#expression" }
+              { include: "#literal-punctuation" }
+            ]
+          }
+        ]
+      }
+    ]
+  "literal-switch":
+    patterns: [
+      {
+        name: "meta.switch.pf"
+        begin: "\\s*(?<!\\.)\\b(switch)\\b"
+        end: "\\s*\\}"
+        beginCaptures:
+          "1":
+            name: "keyword.control.switch.pf"
+        endCaptures:
+          "0":
+            name: "meta.brace.curly.pf"
+        patterns: [
+          { include: "#round-brackets" }
+          {
+            begin: "\\s*\\{"
+            end: "\\s*(?=})"
+            beginCaptures:
+              "0":
+                name: "meta.brace.curly.pf"
+            patterns: [
+              {
+                begin: "\\s*(?<!\\.)\\b(case|default)\\b"
+                end: "\\s*(?=:)"
+                beginCaptures:
+                  "1":
+                    name: "keyword.control.switch.pf"
+                patterns: [
+                  { include: "#expression" }
+                ]
+              }
+              { include: "$self" }
+            ]
+          }
+        ]
+      }
+    ]
+  brackets:
+    patterns: [
+      { include: "#round-brackets" }
+      { include: "#square-brackets" }
+      { include: "#curly-brackets" }
+    ]
+  "round-brackets":
+    patterns: [
+      {
+        comment: "try to avoid ternary operators which have a '? some chars :'"
+        name: "meta.group.braces.round"
+        begin: "(^|:|;|=|(?<=:|;|=))\\s*(\\((?=((\"|').*?(?<=[^\\\\])\\k<-1>|[^?:])*(:|\\?\\s*:)))"
+        end: "\\s*\\)"
+        beginCaptures:
+          "2":
+            name: "meta.brace.round.pf"
+        endCaptures:
+          "0":
+            name: "meta.brace.round.pf"
+        patterns: [
+          { include: "#flowtype-typecast" }
+          { include: "#expression" }
+        ]
+      }
+      {
+        name: "meta.group.braces.round"
+        begin: "\\s*\\("
+        end: "\\s*\\)"
+        endCaptures:
+          "0":
+            name: "meta.brace.round.pf"
+        beginCaptures:
+          "0":
+            name: "meta.brace.round.pf"
+        patterns: [
+          { include: "#expression" }
+        ]
+      }
+    ]
+  "square-brackets":
+    patterns: [
+      {
+        name: "meta.group.braces.square"
+        begin: "\\s*\\["
+        end: "\\s*\\]"
+        endCaptures:
+          "0":
+            name: "meta.brace.square.pf"
+        beginCaptures:
+          "0":
+            name: "meta.brace.square.pf"
+        patterns: [
+          { include: "#expression" }
+        ]
+      }
+    ]
+  "curly-brackets":
+    patterns: [
+      {
+        name: "meta.group.braces.curly"
+        begin: "\\s*\\{"
+        end: "\\s*\\}"
+        endCaptures:
+          "0":
+            name: "meta.brace.curly.pf"
+        beginCaptures:
+          "0":
+            name: "meta.brace.curly.pf"
+        patterns: [
+          { include: "$self" }
+        ]
+      }
+    ]
+  jsdoc:
+    patterns: [
+      {
+        comment: "common doc @ keywords"
+        match: "(?<!\\w)@(abstract|alias|author|class|constructor|deprecated|enum|event|example|extends|fires|ignore|inheritdoc|member|method|param|private|property|protected|readonly|requires|return|since|static|throws|type|var)\\b"
+        name: "storage.type.class.doc"
+      }
+      {
+        comment: "additional jsdoc keywords"
+        match: "(?<!\\w)@(access|also|arg|arguments|augments|borrows|callback|classdesc|constant|const|constructs|copyright|default|defaultvalue|desc|description|emits|exception|exports|external|file|fileoverview|function|func|global|host|implements|inner|instance|interface|kind|lends|license|listens|memberof|mixes|mixin|module|name|namsepace|overview|prop|public|returns|see|summary|this|todo|tutorial|typedef|undocumented|variation|version|virtual)\\b"
+        name: "storage.type.class.jsdoc"
+      }
+      {
+        comment: "additional jsduck keywords"
+        match: "(?<!\\w)@(accessor|alternateClassName|aside|cfg|chainable|docauthor|evented|experimental|ftype|hide|inheritable|localdoc|markdown|mixins|new|override|preventable|ptype|removed|scss mixin|singleton|template|uses|xtype)\\b"
+        name: "storage.type.class.jsduck"
+      }
+    ]
+  comments:
+    patterns: [
+      { include: "#special-comments-conditional-compilation" }
+      {
+        name: "comment.block.documentation.pf"
+        begin: "\\s*/\\*\\*(?!/)"
+        end: "\\s*\\*/"
+        captures:
+          "0":
+            name: "punctuation.definition.comment.pf"
+        patterns: [
+          { include: "#jsdoc" }
+        ]
+      }
+      {
+        name: "comment.block.pf"
+        begin: "\\s*/\\*"
+        end: "\\s*\\*/"
+        captures:
+          "0":
+            name: "punctuation.definition.comment.pf"
+      }
+      {
+        name: "comment.block.html.pf"
+        match: "\\s*(<!--|-->)"
+        captures:
+          "0":
+            name: "punctuation.definition.comment.pf"
+      }
+      {
+        name: "comment.line.double-slash.pf"
+        begin: "\\s*(//)"
+        end: "\\s*$"
+        beginCaptures:
+          "1":
+            name: "punctuation.definition.comment.pf"
+      }
+      {
+        name: "comment.line.shebang.pf"
+        match: "^(#!).*$\\n?"
+        captures:
+          "1":
+            name: "punctuation.definition.comment.pf"
+      }
+    ]
+  "special-comments-conditional-compilation":
+    patterns: [
+      {
+        name: "comment.block.conditional.pf"
+        begin: "\\s*/\\*(?=@)"
+        end: "\\s*\\*/"
+        captures:
+          "0":
+            name: "punctuation.definition.comment.pf"
+        endCaptures:
+          "1":
+            name: "keyword.control.conditional.pf"
+          "2":
+            name: "punctuation.definition.keyword.pf"
+        patterns: [
+          {
+            name: "punctuation.definition.comment.pf"
+            match: "\\s*/\\*"
+          }
+          { include: "$self" }
+        ]
+      }
+      {
+        name: "keyword.control.conditional.pf"
+        match: "\\s*(?!@)(@)(if|elif|else|end|ifdef|endif|cc_on|set)\\b"
+        captures:
+          "1":
+            name: "punctuation.definition.keyword.pf"
+      }
+      {
+        name: "variable.other.conditional.pf"
+        match: "\\s*(?!@)(@)(_win32|_win16|_mac|_alpha|_x86|_mc680x0|_PowerPC|_jscript|_jscript_build|_jscript_version|_debug|_fast|[a-zA-Z]\\w+)"
+        captures:
+          "1":
+            name: "punctuation.definition.variable.pf"
+      }
+    ]
+  "literal-punctuation":
+    patterns: [
+      { include: "#literal-semi-colon" }
+      { include: "#literal-comma" }
+    ]
+  "literal-semi-colon":
+    patterns: [
+      {
+        name: "punctuation.terminator.statement.pf"
+        match: "\\s*\\;"
+      }
+    ]
+  "literal-comma":
+    patterns: [
+      {
+        name: "meta.delimiter.comma.pf"
+        match: "\\s*,"
+      }
+    ]
+  "literal-function":
+    patterns: [
+      {
+        comment: "e.g. fn (arg1, arg2) { }"
+        name: "meta.function.pf"
+        begin: "\\s*(\\bfn\\b)\\s*(?=\\()"
+        end: "(?=\\s*\\{)"
+        applyEndPatternLast: 1
+        beginCaptures:
+          "1":
+            name: "storage.type.function.pf"
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+      {
+        comment: "e.g. play = fn(arg1, arg2) { }"
+        name: "meta.function.pf"
+        begin: "\\s*(\\b[_a-zA-Z][\\w]*)\\s*(=)\\s*(\\bfn\\b)\\s*(?=\\()"
+        end: "(?=\\s*\\{)"
+        applyEndPatternLast: 1
+        beginCaptures:
+          "1":
+            name: "entity.name.function.pf"
+          "2":
+            name: "keyword.operator.assignment.pf"
+          "3":
+            name: "storage.type.function.pf"
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+    ]
+  "literal-quasi":
+    patterns: [
+      {
+        name: "string.quasi.pf"
+        begin: "\\s*([a-zA-Z$_][\\w$_]*)?(`)"
+        end: "\\s*(?<!\\\\)`"
+        beginCaptures:
+          "1":
+            name: "entity.quasi.tag.name.pf"
+          "2":
+            name: "punctuation.definition.quasi.begin.pf"
+        endCaptures:
+          "0":
+            name: "punctuation.definition.quasi.end.pf"
+        patterns: [
+          {
+            name: "entity.quasi.element.pf"
+            begin: "(?<!\\\\)\\${"
+            end: "\\s*}"
+            beginCaptures:
+              "0":
+                name: "punctuation.quasi.element.begin.pf"
+            endCaptures:
+              "0":
+                name: "punctuation.quasi.element.end.pf"
+            patterns: [
+              { include: "#expression" }
+            ]
+          }
+          { include: "#string-content" }
+        ]
+      }
+    ]
+  "literal-operators":
+    patterns: [
+      {
+        name: "keyword.operator.pf"
+        match: "\\s*(?<!\\.)\\b(delete|in|instanceof|new|of|typeof|void|with)\\b"
+      }
+      {
+        name: "keyword.operator.logical.pf"
+        match: "\\s*(!(?!=)|&&|\\|\\|)"
+      }
+      {
+        name: "keyword.operator.assignment.pf"
+        match: "\\s*(=(?!=))"
+      }
+      {
+        name: "keyword.operator.assignment.augmented.pf"
+        match: "\\s*(%=|&=|\\*=|\\+=|-=|/=|\\^=|\\|=|<<=|>>=|>>>=)"
+      }
+      {
+        name: "keyword.operator.bitwise.pf"
+        match: "\\s*(~|<<|>>>|>>|&|\\^|\\|)"
+      }
+      {
+        name: "keyword.operator.relational.pf"
+        match: "\\s*(<=|>=|<|>)"
+      }
+      {
+        name: "keyword.operator.comparison.pf"
+        match: "\\s*(==|!=)"
+      }
+      {
+        name: "keyword.operator.arithmetic.pf"
+        match: "\\s*(--|\\+\\+|/(?!/|\\*)|%|\\*(?<!/\\*)|\\+|-)"
+      }
+      {
+        comment: "ternary operator"
+        begin: "\\s*(\\?)"
+        end: "\\s*(:)"
+        beginCaptures:
+          "1":
+            name: "keyword.operator.ternary.pf"
+        endCaptures:
+          "1":
+            name: "keyword.operator.ternary.pf"
+        patterns: [
+          { include: "#expression" }
+        ]
+      }
+      {
+        name: "keyword.operator.spread.pf"
+        match: "\\s*(?<!\\.)\\.\\.\\."
+      }
+      {
+        name: "keyword.operator.accessor.pf"
+        match: "\\."
+      }
+    ]
+  "literal-function-call":
+    comment: "maybe in array form e.g. foo[bar]()"
+    patterns: [
+      {
+        name: "meta.function-call.without-arguments.pf"
+        begin: "\\s*([_a-zA-Z][\\w]*)\\s*(?=\\(\\s*\\))"
+        end: "\\s*(?<=\\))"
+        beginCaptures:
+          "1":
+            name: "entity.name.function.pf"
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+      {
+        name: "meta.function-call.without-arguments.pf"
+        begin: "\\s*(?=(\\[(?:(?>[^\\[\\]]+)|\\g<-1>)*\\])\\s*\\(\\s*\\))"
+        end: "(?=.)"
+        applyEndPatternLast: 1
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+      {
+        name: "meta.function-call.with-arguments.pf"
+        begin: "\\s*([_a-zA-Z][\\w]*)\\s*(?=\\()"
+        end: "(?=.)"
+        applyEndPatternLast: 1
+        beginCaptures:
+          "1":
+            name: "entity.name.function.pf"
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+      {
+        name: "meta.function-call.without-arguments.pf"
+        begin: "\\s*(?=(\\[(?:(?>[^\\[\\]]+)|\\g<-1>)*\\])\\s*\\()"
+        end: "(?=.)"
+        applyEndPatternLast: 1
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+    ]
+  "literal-language-constant":
+    patterns: [
+      {
+        name: "constant.language.boolean.true.pf"
+        match: "\\s*(?<!\\.)\\btrue\\b"
+      }
+      {
+        name: "constant.language.boolean.false.pf"
+        match: "\\s*(?<!\\.)\\bfalse\\b"
+      }
+      {
+        name: "constant.language.null.pf"
+        match: "\\s*(?<!\\.)\\bnull\\b"
+      }
+    ]
+  support:
+    patterns: [
+      {
+        name: "support.class.builtin.pf"
+        match: "\\s*\\b(Array|ArrayBuffer|Boolean|DataView|Date|Float(32|64)Array|Int(8|16|32)Array|Function|GeneratorFunction|Map|Math|Number|Object|Promise|Proxy|RegExp|Set|String|Uint(8|16|32)Array|Uint8ClampedArray|WeakMap|WeakSet)\\b"
+      }
+      {
+        name: "support.function.pf"
+        match: "\\s*(?<!\\.)\\b(decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|isFinite|isNaN|parseFloat|parseInt|unescape)\\b"
+      }
+      {
+        name: "support.function.mutator.pf"
+        match: "(?<=\\.)(shift|sort|splice|unshift|pop|push|reverse)\\b"
+      }
+      {
+        name: "support.class.error.pf"
+        match: "\\s*(?<!\\.)\\b((Eval|Range|Reference|Syntax|Type|URI)?Error)\\b"
+      }
+      {
+        name: "keyword.other.pf"
+        match: "\\s*(?<!\\.)\\b(debugger)\\b"
+      }
+      {
+        name: "support.type.object.dom.pf"
+        match: "\\s*(?<!\\.)\\b(document|window)\\b"
+      }
+      {
+        name: "support.constant.dom.pf"
+        match: "\\s*\\b(ELEMENT_NODE|ATTRIBUTE_NODE|TEXT_NODE|CDATA_SECTION_NODE|ENTITY_REFERENCE_NODE|ENTITY_NODE|PROCESSING_INSTRUCTION_NODE|COMMENT_NODE|DOCUMENT_NODE|DOCUMENT_TYPE_NODE|DOCUMENT_FRAGMENT_NODE|NOTATION_NODE|INDEX_SIZE_ERR|DOMSTRING_SIZE_ERR|HIERARCHY_REQUEST_ERR|WRONG_DOCUMENT_ERR|INVALID_CHARACTER_ERR|NO_DATA_ALLOWED_ERR|NO_MODIFICATION_ALLOWED_ERR|NOT_FOUND_ERR|NOT_SUPPORTED_ERR|INUSE_ATTRIBUTE_ERR)\\b"
+      }
+      {
+        match: "\\s*(?<!\\.)\\b(console)(?:(\\.)(warn|info|log|error|time|timeEnd|assert))?\\b"
+        captures:
+          "1":
+            name: "support.type.object.console.pf"
+          "2":
+            name: "keyword.operator.accessor.pf"
+          "3":
+            name: "support.function.console.pf"
+      }
+      {
+        name: "support.module.node.pf"
+        match: "\\s*(?<!\\.)\\b(natives|buffer|child_process|cluster|crypto|dgram|dns|fs|http|https|net|os|path|punycode|string|string_decoder|readline|repl|tls|tty|util|vm|zlib)\\b"
+      }
+      {
+        match: "\\s*(?<!\\.)\\b(process)(?:(\\.)(stdout|stderr|stdin|argv|execPath|execArgv|env|exitCode|version|versions|config|pid|title|arch|platform|mainModule))?\\b"
+        captures:
+          "1":
+            name: "support.type.object.process.pf"
+          "2":
+            name: "keyword.operator.accessor.pf"
+          "3":
+            name: "support.type.object.process.pf"
+      }
+      {
+        match: "\\s*(?<!\\.)\\b(process)(?:(\\.)(abort|chdir|cwd|exit|getgid|setgid|getuid|setuid|setgroups|getgroups|initgroups|kill|memoryUsage|nextTick|umask|uptime|hrtime))?\\b"
+        captures:
+          "1":
+            name: "support.type.object.process.pf"
+          "2":
+            name: "keyword.operator.accessor.pf"
+          "3":
+            name: "support.function.process.pf"
+      }
+      {
+        match: "\\s*\\b(((?<!\\.)module\\.((?<!\\,)exports|id|require|parent|filename|loaded|children)|exports))\\b"
+        captures:
+          "1":
+            name: "support.type.object.module.pf"
+          "2":
+            name: "keyword.operator.accessor.pf"
+          "3":
+            name: "support.type.object.module.pf"
+      }
+      {
+        name: "support.type.object.node.pf"
+        match: "\\s*(?<!\\.)\\b(global|GLOBAL|root|__dirname|__filename)\\b"
+      }
+      {
+        name: "support.class.node.pf"
+        match: "\\s*\\b(Buffer|EventEmitter|Server|Pipe|Socket|REPLServer|ReadStream|WriteStream|Stream|Inflate|Deflate|InflateRaw|DeflateRaw|GZip|GUnzip|Unzip|Zip)\\b"
+      }
+      {
+        name: "meta.tag.mustache.pf"
+        begin: "\\s*{{"
+        end: "\\s*}}"
+      }
+    ]
+  "literal-class":
+    patterns: [
+      {
+        comment: "Classes"
+        begin: "\\s*(?<!\\.)\\b(class)\\s+"
+        end: "\\s*(})"
+        beginCaptures:
+          "0":
+            name: "meta.class.pf"
+          "1":
+            name: "storage.type.class.pf"
+        endCaptures:
+          "1":
+            name: "punctuation.section.class.end.pf"
+        patterns: [
+          {
+            match: "\\s*\\b(extends)\\b\\s*"
+            captures:
+              "0":
+                name: "meta.class.extends.pf"
+              "1":
+                name: "storage.type.extends.pf"
+          }
+          { include: "#flowtype-class-name" }
+          { include: "#flowtype-polymorphs" }
+          {
+            begin: "\\s*{"
+            end: "\\s*(?=})"
+            contentName: "meta.class.body.pf"
+            beginCaptures:
+              "0":
+                name: "punctuation.section.class.begin.pf"
+            patterns: [
+              {
+                match: "\\s*\\b(?<!\\.)static\\b(?!\\.)"
+                name: "storage.modifier.pf"
+              }
+              { include: "#literal-method" }
+              { include: "#brackets" }
+              { include: "#es7-decorators" }
+              { include: "#comments" }
+              { include: "#flowtype-variable" }
+              { include: "#literal-semi-colon" }
+            ]
+          }
+          { include: "#expression" }
+        ]
+      }
+    ]
+  "literal-method-call":
+    patterns: [
+      {
+        name: "meta.function-call.static.without-arguments.pf"
+        comment: "e.g Abc.aaa()"
+        match: "\\s*(?:(?<=\\.)|\\b)([A-Z][$\\w]*)\\s*(\\.)([_a-zA-Z][\\w]*)\\s*(\\(\\s*\\))"
+        captures:
+          "1":
+            name: "variable.other.class.pf"
+          "2":
+            name: "keyword.operator.accessor.pf"
+          "3":
+            name: "entity.name.function.pf"
+          "4":
+            name: "meta.group.braces.round.function.arguments.pf"
+      }
+      {
+        name: "meta.function-call.static.with-arguments.pf"
+        match: "\\s*(?:(?<=\\.)|\\b)\\s*([A-Z][$\\w]*)\\s*(\\.)([_a-zA-Z][\\w]*)\\s*(?=\\()"
+        captures:
+          "1":
+            name: "variable.other.class.pf"
+          "2":
+            name: "keyword.operator.accessor.pf"
+          "3":
+            name: "entity.name.function.pf"
+      }
+      {
+        name: "meta.function-call.method.without-arguments.pf"
+        match: "\\s*(?<=\\.)\\s*([_a-zA-Z][\\w]*)\\s*(\\(\\s*\\))"
+        captures:
+          "1":
+            name: "entity.name.function.pf"
+          "2":
+            name: "meta.group.braces.round.function.arguments.pf"
+      }
+      {
+        name: "meta.function-call.method.with-arguments.pf"
+        match: "\\s*(?<=\\.)([_a-zA-Z][\\w]*)\\s*(?=\\()"
+        captures:
+          "1":
+            name: "entity.name.function.pf"
+      }
+    ]
+  "literal-language-variable":
+    patterns: [
+      {
+        name: "variable.language.arguments.pf"
+        match: "\\s*(?<!(?<!\\.\\.)\\.)\\b(arguments)\\b"
+      }
+      {
+        name: "variable.language.super.pf"
+        match: "\\s*(?<!(?<!\\.\\.)\\.)\\b(super)\\b\\s*(?!\\()"
+      }
+      {
+        name: "variable.language.this.pf"
+        match: "\\s*(?<!(?<!\\.\\.)\\.)\\b(this)\\b"
+      }
+      {
+        name: "variable.language.self.pf"
+        match: "\\s*(?<!(?<!\\.\\.)\\.)\\b(self)\\b\\s*(?!\\()"
+      }
+      {
+        name: "variable.language.proto.pf"
+        match: "\\s*(?<=\\.)\\b(__proto__)\\b"
+      }
+      {
+        name: "variable.language.constructor.pf"
+        match: "\\s*(?<=\\.)\\b(constructor)\\b\\s*(?!\\()"
+      }
+      {
+        name: "variable.language.prototype.pf"
+        match: "\\s*(?<=\\.)\\b(prototype)\\b"
+      }
+    ]
+  "string-content":
+    patterns: [
+      {
+        name: "constant.character.escape.newline.pf"
+        match: "\\\\\\s*\\n"
+      }
+      {
+        name: "constant.character.escape"
+        match: "\\\\['|\"|\\\\|n|r|t|b|f|v|0]"
+      }
+      {
+        name: "constant.character.escape"
+        match: "\\\\u((\\{[0-9a-fA-F]+\\})|[0-9a-fA-F]{4})"
+      }
+      {
+        name: "constant.character.escape"
+        match: "\\\\x[0-9a-fA-F]{2}"
+      }
+    ]
+  "literal-number":
+    patterns: [
+      {
+        match: "\\s*((?i)(?:\\B[-+]|\\b)0x[0-9a-f]*\\.(\\B|\\b[0-9]+))"
+        captures:
+          "1":
+            name: "invalid.illegal.numeric.hex.pf"
+      }
+      {
+        match: "\\s*((?:\\B[-+]|\\b)0[0-9]+\\.(\\B|\\b[0-9]+))"
+        captures:
+          "1":
+            name: "invalid.illegal.numeric.octal.pf"
+      }
+      {
+        match: "\\s*((?:\\B[-+])?(?:\\b0b[0-1]*|\\b0o[0-7]*|\\b0x[0-9a-f]*|(\\B\\.[0-9]+|\\b[0-9]+(\\.[0-9]*)?)(e[-+]?[0-9]+)?))"
+        captures:
+          "1":
+            name: "constant.numeric.pf"
+      }
+      {
+        match: "\\s*((?:\\B[-+]|\\b)(Infinity)\\b)"
+        captures:
+          "1":
+            name: "constant.language.infinity.pf"
+      }
+    ]
+  "literal-constructor":
+    patterns: [
+      {
+        disabled: 1
+        name: "meta.instance.constructor"
+        begin: "\\s*(new)\\s+(?=[_$a-zA-Z][$\\w.]*)"
+        end: "(?![_$a-zA-Z][$\\w.]*)"
+        beginCaptures:
+          "1":
+            name: "keyword.operator.new.pf"
+        patterns: [
+          { include: "#support" }
+          {
+            match: "([_$a-zA-Z][$\\w.]*\\.)?([_a-zA-Z][\\w]*)"
+            captures:
+              "2":
+                name: "entity.name.type.new.pf"
+          }
+        ]
+      }
+    ]
+  "literal-arrow-function":
+    patterns: [
+      {
+        comment: "e.g. (args) => { }"
+        name: "meta.function.arrow.pf"
+        begin: "\\s*(\\basync\\b)?\\s*(?=(<(?:(?>[^<>]+)|\\g<-1>)*>)?\\s*(\\((?:(?>[^()]+)|\\g<-1>)*\\))\\s*(?:\\s*(:|\\|)(\\s*[$_a-zA-Z0-9]+(<(?:(?>[^<>]+)|\\g<-1>)*>)?|\\s*(\\{(?:(?>[^{}]+)|\\g<-1>)*\\})|\\s*(((')((?:[^']|\\\\')*)('))|\\s*((\")((?:[^\"]|\\\\\")*)(\")))|\\s*[x0-9A-Fa-f]+))*\\s*=>)"
+        end: "\\s*(=>)"
+        applyEndPatternLast: 1
+        endCaptures:
+          "1":
+            name: "storage.type.function.arrow.pf"
+        beginCaptures:
+          "1":
+            name: "storage.type.pf"
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+      {
+        comment: "e.g. play = (args) => { }"
+        name: "meta.function.arrow.pf"
+        begin: "\\s*(\\b[_a-zA-Z][\\w]*)\\s*(=)\\s*(?=(<(?:(?>[^<>]+)|\\g<-1>)*>)?\\s*(\\((?:(?>[^()]+)|\\g<-1>)*\\))\\s*(?:\\s*(:|\\|)(\\s*[$_a-zA-Z0-9]+(<(?:(?>[^<>]+)|\\g<-1>)*>)?|\\s*(\\{(?:(?>[^{}]+)|\\g<-1>)*\\})|\\s*(((')((?:[^']|\\\\')*)('))|\\s*((\")((?:[^\"]|\\\\\")*)(\")))|\\s*[x0-9A-Fa-f]+))*\\s*=>)"
+        end: "\\s*(=>)"
+        applyEndPatternLast: 1
+        beginCaptures:
+          "1":
+            name: "entity.name.function.pf"
+          "2":
+            name: "keyword.operator.assignment.pf"
+          "3":
+            name: "storage.type.pf"
+        endCaptures:
+          "1":
+            name: "storage.type.function.arrow.pf"
+        patterns: [
+          { include: "#flowtype-bracketed-parameters" }
+        ]
+      }
+    ]
+  "literal-regexp":
+    patterns: [
+      {
+        name: "string.regexp.pf"
+        begin: "(?<=\\.|\\(|,|{|}|\\[|;|,|<|>|<=|>=|==|!=|===|!==|\\+|-|\\*|%|\\+\\+|--|<<|>>|>>>|&|\\||\\^|!|~|&&|\\|\\||\\?|:|=|\\+=|-=|\\*=|%=|<<=|>>=|>>>=|&=|\\|=|\\^=|/|/=|\\Wnew|\\Wdelete|\\Wvoid|\\Wtypeof|\\Winstanceof|\\Win|\\Wdo|\\Wreturn|\\Wcase|\\Wthrow|^new|^delete|^void|^typeof|^instanceof|^in|^do|^return|^case|^throw|^)\\s*(/)(?!/|\\*|$)"
+        end: "(/)([gimy]*)"
+        beginCaptures:
+          "1":
+            name: "punctuation.definition.string.begin.pf"
+        endCaptures:
+          "1":
+            name: "punctuation.definition.string.end.pf"
+          "2":
+            name: "keyword.other.pf"
+        patterns: [
+          { include: "source.regexp.babel" }
+        ]
+      }
+    ]
+  "literal-string":
+    patterns: [
+      {
+        contentName: "string.quoted.single.pf"
+        begin: "\\s*(('))"
+        end: "(('))|(\\n)"
+        beginCaptures:
+          "1":
+            name: "string.quoted.single.pf"
+          "2":
+            name: "punctuation.definition.string.begin.pf"
+        endCaptures:
+          "1":
+            name: "string.quoted.single.pf"
+          "2":
+            name: "punctuation.definition.string.end.pf"
+          "3":
+            name: "invalid.illegal.newline.pf"
+        patterns: [
+          { include: "#string-content" }
+        ]
+      }
+      {
+        contentName: "string.quoted.double.pf"
+        begin: "\\s*((\"))"
+        end: "((\"))|(\\n)"
+        beginCaptures:
+          "1":
+            name: "string.quoted.double.pf"
+          "2":
+            name: "punctuation.definition.string.begin.pf"
+        endCaptures:
+          "1":
+            name: "string.quoted.double.pf"
+          "2":
+            name: "punctuation.definition.string.end.pf"
+          "3":
+            name: "invalid.illegal.newline.pf"
+        patterns: [
+          { include: "#string-content" }
+        ]
+      }
+    ]
+  "literal-module":
+    patterns: [
+      {
+        name: "keyword.control.module.pf"
+        match: "\\s*(?<!\\.)\\b(import|export|default)\\b"
+      }
+      {
+        name: "keyword.control.module.reference.pf"
+        match: "\\s*(?<!\\.)\\b(from|as)\\b"
+      }
+    ]
+  "literal-variable":
+    patterns: [
+      {
+        comment: "e.g. CONSTANT"
+        name: "variable.other.constant.pf"
+        match: "\\s*[A-Z][_$\\dA-Z]*\\b"
+      }
+      {
+        comment: "e.g. Class.property"
+        name: "meta.property.class.pf"
+        match: "\\s*\\b([A-Z][$\\w]*)\\s*(\\.)([_a-zA-Z][\\w]*)"
+        captures:
+          "1":
+            name: "variable.other.class.pf"
+          "2":
+            name: "keyword.operator.accessor.pf"
+          "3":
+            name: "variable.other.property.static.pf"
+      }
+      {
+        comment: "e.g. obj.property"
+        name: "variable.other.object.pf"
+        match: "\\s*(?<!\\.)[_a-zA-Z][\\w]*\\s*(?=[\\[\\.])"
+        captures:
+          "1":
+            name: "variable.other.object.pf"
+      }
+      {
+        comment: "e.g. obj.property"
+        name: "meta.property.object.pf"
+        match: "\\s*(?<=\\.)\\s*[_a-zA-Z][\\w]*"
+        captures:
+          "0":
+            name: "variable.other.property.pf"
+      }
+      {
+        name: "variable.other.readwrite.pf"
+        match: "\\s*[_a-zA-Z][\\w]*"
+      }
+    ]
+  jsx:
+    comment: "Avoid < operator expressions as best we can using Zertosh's regex"
+    patterns: [
+      {
+        begin: "(?<=\\(|\\{|\\[|,|&&|\\|\\||\\?|:|=|=>|\\Wreturn|^return|^)\\s*(?=<[_$a-zA-Z])"
+        end: "(?=.)"
+        applyEndPatternLast: 1
+        patterns: [
+          { include: "#jsx-tag-element-name" }
+        ]
+      }
+    ]
+  "jsx-tag-element-name":
+    patterns: [
+      {
+        comment: "Tags that end > are trapped in #jsx-tag-termination"
+        name: "meta.tag.pfx"
+        begin: "\\s*(<)([$_\\p{L}](?:[$.:\\p{L}\\p{Mn}\\p{Mc}\\p{Nd}\\p{Nl}\\p{Pc}-](?<!\\.\\.))*+)(?=[/>\\s])(?<![\\.:])"
+        end: "\\s*(?<=</)(\\2)(>)|(/>)|((?<=</)[\\S ]*?)>"
+        beginCaptures:
+          "1":
+            name: "punctuation.definition.tag.pfx"
+          "2":
+            name: "entity.name.tag.open.pfx"
+        endCaptures:
+          "1":
+            name: "entity.name.tag.close.pfx"
+          "2":
+            name: "punctuation.definition.tag.pfx"
+          "3":
+            name: "punctuation.definition.tag.pfx"
+          "4":
+            name: "invalid.illegal.termination.pfx"
+        patterns: [
+          { include: "#jsx-tag-termination" }
+          { include: "#jsx-tag-attributes" }
+        ]
+      }
+    ]
+  "jsx-tag-termination":
+    patterns: [
+      {
+        comment: "uses non consuming search for </ in </tag>"
+        begin: "(>)"
+        end: "(</)"
+        beginCaptures:
+          "0":
+            name: "punctuation.definition.tag.pfx"
+          "1":
+            name: "JSXStartTagEnd"
+        endCaptures:
+          "0":
+            name: "punctuation.definition.tag.pfx"
+          "1":
+            name: "JSXEndTagStart"
+        patterns: [
+          { include: "#jsx-evaluated-code" }
+          { include: "#jsx-entities" }
+          { include: "#jsx-tag-element-name" }
+        ]
+      }
+    ]
+  "jsx-tag-attributes":
+    patterns: [
+      { include: "#jsx-attribute-name" }
+      { include: "#jsx-assignment" }
+      { include: "#jsx-string-double-quoted" }
+      { include: "#jsx-string-single-quoted" }
+      { include: "#jsx-evaluated-code" }
+      { include: "#jsx-tag-element-name" }
+      { include: "#comments" }
+    ]
+  "jsx-spread-attribute":
+    patterns: [
+      {
+        comment: "Spread attribute { ... AssignmentExpression }"
+        match: "(?<!\\.)\\.\\.\\."
+        name: "keyword.operator.spread.pfx"
+      }
+    ]
+  "jsx-attribute-name":
+    patterns: [
+      {
+        comment: "look for attribute name"
+        match: "(?<!\\S)([$_\\p{L}](?:[$.\\p{L}\\p{Mn}\\p{Mc}\\p{Nd}\\p{Nl}\\p{Pc}-](?<!\\.\\.))*+)(?<!\\.)(?=//|/\\*|=|\\s|>|/>)"
+        captures:
+          "0":
+            name: "entity.other.attribute-name.pfx"
+      }
+    ]
+  "jsx-assignment":
+    patterns: [
+      {
+        comment: "look for attribute assignment"
+        name: "keyword.operator.assignment.pfx"
+        match: "=(?=\\s*(?:'|\"|{|/\\*|<|//|\\n))"
+      }
+    ]
+  "jsx-string-double-quoted":
+    name: "string.quoted.double.pf"
+    begin: "\""
+    end: "\"(?<!\\\\\")"
+    beginCaptures:
+      "0":
+        name: "punctuation.definition.string.begin.pfx"
+    endCaptures:
+      "0":
+        name: "punctuation.definition.string.end.pfx"
+    patterns: [
+      { include: "#jsx-entities" }
+    ]
+  "jsx-string-single-quoted":
+    name: "string.quoted.single.pf"
+    begin: "'"
+    end: "'(?<!\\\\')"
+    beginCaptures:
+      "0":
+        name: "punctuation.definition.string.begin.pfx"
+    endCaptures:
+      "0":
+        name: "punctuation.definition.string.end.pfx"
+    patterns: [
+      { include: "#jsx-entities" }
+    ]
+  "jsx-evaluated-code":
+    name: "meta.embedded.expression.pf"
+    begin: "{"
+    end: "}"
+    beginCaptures:
+      "0":
+        name: "punctuation.section.embedded.begin.pfx"
+    endCaptures:
+      "0":
+        name: "punctuation.section.embedded.end.pfx"
+    contentName: "source.pf.pfx"
+    patterns: [
+      { include: "#jsx-string-double-quoted" }
+      { include: "#jsx-string-single-quoted" }
+      { include: "#jsx-spread-attribute" }
+      { include: "#expression" }
+    ]
+  "jsx-entities":
+    patterns: [
+      {
+        comment: "Embeded HTML entities &blah"
+        match: "(&)([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+)(;)"
+        captures:
+          "0":
+            name: "constant.character.entity.pfx"
+          "1":
+            name: "punctuation.definition.entity.pfx"
+          "2":
+            name: "entity.name.tag.html.pfx"
+          "3":
+            name: "punctuation.definition.entity.pfx"
+      }
+      {
+        comment: "Entity with & and invalid name"
+        match: "&\\S*;"
+        name: "invalid.illegal.bad-ampersand.pfx"
+      }
+    ]
+  "flowtype-variable":
+    patterns: [
+      {
+        comment: "name of variable spread var with flowtype :"
+        match: "\\s*((?<!\\.)\\.\\.\\.)?([$_\\p{L}](?:[$.\\p{L}\\p{Mn}\\p{Mc}\\p{Nd}\\p{Nl}\\p{Pc}])*+)\\s*(\\??)\\s*(?=:|=>)"
+        captures:
+          "1":
+            name: "keyword.operator.spread.pf"
+          "2":
+            name: "variable.other.readwrite.pf"
+          "3":
+            name: "keyword.operator.optional.parameter.flowtype"
+      }
+      { include: "#flowtype-vars-and-props" }
+    ]
+  "flowtype-vars-and-props":
+    patterns: [
+      {
+        comment: "flowtype optional arg/parameter e.g. protocol? : string"
+        name: "punctuation.type.flowtype"
+        match: "\\?(?=\\s*:)"
+      }
+      {
+        comment: "typed entity :"
+        begin: "\\s*(:)"
+        end: "(?=.)"
+        applyEndPatternLast: 1
+        beginCaptures:
+          "1":
+            name: "punctuation.type.flowtype"
+        patterns: [
+          { include: "#flowtype-parse-types" }
+        ]
+      }
+      { include: "#literal-comma" }
+      {
+        comment: "An Iterator prefix?"
+        match: "\\s*@@"
+      }
+      {
+        match: "\\s*(=>)"
+        captures:
+          "1":
+            name: "storage.type.function.arrow.pf"
+      }
+      { include: "#flowtype-bracketed-parameters" }
+      { include: "#flowtype-parse-array" }
+      { include: "#expression" }
+    ]
+  "flowtype-bracketed-parameters":
+    patterns: [
+      {
+        comment: "Get parameters within a function/method call"
+        begin: "\\s*(\\()"
+        end: "\\s*(\\))"
+        beginCaptures:
+          "1":
+            name: "punctuation.definition.parameters.begin.pf"
+        endCaptures:
+          "1":
+            name: "punctuation.definition.parameters.end.pf"
+        patterns: [
+          { include: "#flowtype-variable" }
+        ]
+      }
+    ]
